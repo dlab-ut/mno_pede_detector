@@ -62,7 +62,7 @@ private:
       RCLCPP_INFO(get_logger(), "[mno_pede_detector] check for traffic light.");
       imageCount++;
       if(msg->is_detected) trafficLightCount++;
-      if(imageCount >= 100) existTrafficLight = filter_temporal();
+      if(imageCount >= 15) existTrafficLight = filter_temporal();
     }else{
       if(msg->is_detected){
         RCLCPP_INFO(get_logger(), "[mno_pede_detector] check red or blue");
