@@ -31,6 +31,7 @@
 #define BLUE_V_MIN 50
 #define THRESHOLD_RATIO 0.1
 #define DECISION_RATE 0.8
+#define CHECK_COUNT 15
 
 
 using std::placeholders::_1;
@@ -62,7 +63,7 @@ private:
       RCLCPP_INFO(get_logger(), "[mno_pede_detector] check for traffic light.");
       imageCount++;
       if(msg->is_detected) trafficLightCount++;
-      if(imageCount >= 15) existTrafficLight = filter_temporal();
+      if(imageCount >= CHECK_COUNT) existTrafficLight = filter_temporal();
     }else{
       if(msg->is_detected){
         RCLCPP_INFO(get_logger(), "[mno_pede_detector] check red or blue");
@@ -100,7 +101,7 @@ private:
           blueCount++;
         }
         
-        if(trafficLightCount >= 100) {
+        if(trafficLightCount >= CHECK_COUNT) {
           determine_red_blue();
         }
       }
