@@ -59,11 +59,13 @@ private:
     double whiteAreaRatio;
 
     if(!existTrafficLight){
+      RCLCPP_INFO(get_logger(), "[mno_pede_detector] check for traffic light.");
       imageCount++;
       if(msg->is_detected) trafficLightCount++;
       if(imageCount >= 100) existTrafficLight = filter_temporal();
     }else{
       if(msg->is_detected){
+        RCLCPP_INFO(get_logger(), "[mno_pede_detector] check red or blue");
         trafficLightCount++;
 
         // 画像を取得して切り抜き
@@ -86,6 +88,7 @@ private:
         maskImageRed = filter_color(hsvImage, RED_H_MAX, RED_H_MIN, RED_S_MAX, RED_S_MIN, RED_V_MAX, RED_V_MIN);
         whiteAreaRatio = calculate_white_ratio(maskImageRed);
         if(whiteAreaRatio > THRESHOLD_RATIO){
+          RCLCPP_INFO(get_logger(), "[mno_pede_detector] red light");
           redCount++;
         }
         
@@ -93,6 +96,7 @@ private:
         maskImageBlue = filter_color(hsvImage, BLUE_H_MAX, BLUE_H_MIN, BLUE_S_MAX, BLUE_S_MIN, BLUE_V_MAX, BLUE_V_MIN);
         whiteAreaRatio = calculate_white_ratio(maskImageBlue);
         if(whiteAreaRatio > THRESHOLD_RATIO){
+          RCLCPP_INFO(get_logger(), "[mno_pede_detector] blue light");
           blueCount++;
         }
         
@@ -136,6 +140,7 @@ private:
     double redRatio = (double)redCount/(double)trafficLightCount;
     if(redRatio > DECISION_RATE) {
       std_msgs::msg::Bool msg = std_msgs::msg::Bool();
+      RCLCPP_INFO(this->get_logger(), "[mno_pede_detector] publish false");
       msg.data = false;
       publisher_->publish(msg);
       // RCLCPP_INFO(this->get_logger(), "false");
@@ -147,7 +152,7 @@ private:
         publisher_->publish(msg);
         // RCLCPP_INFO(this->get_logger(), "true");
       }else{
-        RCLCPP_INFO(this->get_logger(), "red_by_also_blue_by_also_no");
+        RCLCPP_INFO(this->get_logger(), "[mno_pede_detector] publish true");
       }
     }
     redCount = 0;
