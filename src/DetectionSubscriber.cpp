@@ -17,11 +17,11 @@
 #include "darknet_ros_msgs/msg/bounding_box.hpp"
 
 #define RED_H_MAX 180
-#define RED_H_MIN 160
+#define RED_H_MIN 155
 #define RED_S_MAX 255
-#define RED_S_MIN 50
+#define RED_S_MIN 70
 #define RED_V_MAX 255
-#define RED_V_MIN 10
+#define RED_V_MIN 0
 
 #define BLUE_H_MAX 100
 #define BLUE_H_MIN 70
@@ -29,10 +29,9 @@
 #define BLUE_S_MIN 50
 #define BLUE_V_MAX 255
 #define BLUE_V_MIN 50
-#define THRESHOLD_RATIO 0.1
+#define THRESHOLD_RATIO 0.05
 #define DECISION_RATE 0.8
 #define CHECK_COUNT 15
-
 
 using std::placeholders::_1;
 
@@ -40,6 +39,7 @@ int imageCount = 0;
 int trafficLightCount = 0;
 int redCount = 0;
 int blueCount = 0;
+int lightState = 0; // 1:赤、2：赤の後の青、0：その他
 bool existTrafficLight = false;
 
 class DetectionSubscriber : public rclcpp::Node
@@ -66,7 +66,7 @@ private:
       if(imageCount >= CHECK_COUNT) existTrafficLight = filter_temporal();
     }else{
       if(msg->is_detected){
-        RCLCPP_INFO(get_logger(), "[mno_pede_detector] check red or blue");
+        // RCLCPP_INFO(get_logger(), "[mno_pede_detector] check red or blue");
         trafficLightCount++;
 
         // 画像を取得して切り抜き
@@ -87,23 +87,43 @@ private:
 
         // 赤のフィルター
         maskImageRed = filter_color(hsvImage, RED_H_MAX, RED_H_MIN, RED_S_MAX, RED_S_MIN, RED_V_MAX, RED_V_MIN);
+        cv::namedWindow("maskImageRed");
+        cv::imshow("maskImageRed", maskImageRed);
+        cv::waitKey(1);
+
         whiteAreaRatio = calculate_white_ratio(maskImageRed);
+        std::cout << whiteAreaRatio << std::endl;
         if(whiteAreaRatio > THRESHOLD_RATIO){
           RCLCPP_INFO(get_logger(), "[mno_pede_detector] red light");
           redCount++;
         }
-        
+
         // 青のフィルター
         maskImageBlue = filter_color(hsvImage, BLUE_H_MAX, BLUE_H_MIN, BLUE_S_MAX, BLUE_S_MIN, BLUE_V_MAX, BLUE_V_MIN);
+        cv::namedWindow("maskImageBlue");
+        cv::imshow("maskImageBlue", maskImageBlue);
+        cv::waitKey(1);
         whiteAreaRatio = calculate_white_ratio(maskImageBlue);
         if(whiteAreaRatio > THRESHOLD_RATIO){
           RCLCPP_INFO(get_logger(), "[mno_pede_detector] blue light");
           blueCount++;
         }
-        
+
         if(trafficLightCount >= CHECK_COUNT) {
           determine_red_blue();
         }
+      }
+
+      if(lightState == 2){
+        std_msgs::msg::Bool msg = std_msgs::msg::Bool();
+        msg.data = true;
+        publisher_->publish(msg);
+        RCLCPP_INFO(this->get_logger(), "[mno_pede_detector] publish true");
+      }else{
+        std_msgs::msg::Bool msg = std_msgs::msg::Bool();
+        msg.data = false;
+        publisher_->publish(msg);
+        RCLCPP_INFO(this->get_logger(), "[mno_pede_detector] publish false");
       }
     }
   }
@@ -140,20 +160,11 @@ private:
   {
     double redRatio = (double)redCount/(double)trafficLightCount;
     if(redRatio > DECISION_RATE) {
-      std_msgs::msg::Bool msg = std_msgs::msg::Bool();
-      RCLCPP_INFO(this->get_logger(), "[mno_pede_detector] publish false");
-      msg.data = false;
-      publisher_->publish(msg);
-      // RCLCPP_INFO(this->get_logger(), "false");
+      lightState = 1;
     }else{
       double blueRatio = (double)blueCount/(double)trafficLightCount;
       if(blueRatio > DECISION_RATE){
-        std_msgs::msg::Bool msg = std_msgs::msg::Bool();
-        msg.data = true;
-        publisher_->publish(msg);
-        // RCLCPP_INFO(this->get_logger(), "true");
-      }else{
-        RCLCPP_INFO(this->get_logger(), "[mno_pede_detector] publish true");
+        if(lightState == 1) lightState = 2;
       }
     }
     redCount = 0;
