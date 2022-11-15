@@ -43,8 +43,8 @@ int redCount = 0;
 int blueCount = 0;
 int lightState = 0; // 1:赤、2：赤の後の青、0：その他
 bool existTrafficLight = false;
-bool isRecognize = false;
-std::vector<int> recognizeWayPoints;
+bool isDetect_ = false;
+std::vector<int> detectWayPoints;
 
 class DetectionSubscriber : public rclcpp::Node
 {
@@ -55,10 +55,10 @@ public:
     subscription_mno = this->create_subscription<darknet_ros_msgs::msg::Mno>(
         std::string("/mno_topic"), 10, std::bind(&DetectionSubscriber::mnoCallback, this, _1));
     subscription_way = this->create_subscription<std_msgs::msg::Int16>(
-        std::string("/way_point"), 10, std::bind(&DetectionSubscriber::wayPointCallback, this, _1));
+        std::string("/current_waypoint_index"), 10, std::bind(&DetectionSubscriber::wayPointCallback, this, _1));
     publisher_ = this->create_publisher<std_msgs::msg::Bool>("is_runnable", 10);
-    recognizeWayPoints.push_back(10);
-    recognizeWayPoints.push_back(20);
+    detectWayPoints.push_back(10);
+    detectWayPoints.push_back(20);
   }
 
 private:
@@ -66,7 +66,7 @@ private:
   {
     cv::Mat camImageMat, clipImage, hsvImage, maskImageRed, maskImageBlue;
     double whiteAreaRatio;
-    if (isRecognize)
+    if (isDetect_)
     {
       if (!existTrafficLight)
       {
@@ -102,9 +102,9 @@ private:
 
           // 赤のフィルター
           maskImageRed = filter_color(hsvImage, RED_H_MAX, RED_H_MIN, RED_S_MAX, RED_S_MIN, RED_V_MAX, RED_V_MIN);
-          cv::namedWindow("maskImageRed");
-          cv::imshow("maskImageRed", maskImageRed);
-          cv::waitKey(1);
+          // cv::namedWindow("maskImageRed");
+          // cv::imshow("maskImageRed", maskImageRed);
+          // cv::waitKey(1);
 
           whiteAreaRatio = calculate_white_ratio(maskImageRed);
           RCLCPP_INFO(get_logger(), "whiteAreaRatio red = %f", whiteAreaRatio);
@@ -116,9 +116,9 @@ private:
 
           // 青のフィルター
           maskImageBlue = filter_color(hsvImage, BLUE_H_MAX, BLUE_H_MIN, BLUE_S_MAX, BLUE_S_MIN, BLUE_V_MAX, BLUE_V_MIN);
-          cv::namedWindow("maskImageBlue");
-          cv::imshow("maskImageBlue", maskImageBlue);
-          cv::waitKey(1);
+          // cv::namedWindow("maskImageBlue");
+          // cv::imshow("maskImageBlue", maskImageBlue);
+          // cv::waitKey(1);
           whiteAreaRatio = calculate_white_ratio(maskImageBlue);
           RCLCPP_INFO(get_logger(), "whiteAreaRatio blue = %f", whiteAreaRatio);
           if (whiteAreaRatio > THRESHOLD_RATIO)
@@ -145,7 +145,7 @@ private:
           blueCount = 0;
           lightState = 0;
           existTrafficLight = false;
-          isRecognize = false;
+          isDetect_ = false;
         }
         else
         {
@@ -161,18 +161,27 @@ private:
   void wayPointCallback(const std_msgs::msg::Int16::SharedPtr msg) const
   {
     int wayPoint = msg->data;
-    int deleteIndex = -1;
-    for (size_t i = 0; i < recognizeWayPoints.size(); i++)
+    bool detectPointFlag = false;
+    for (size_t i = 0; i < detectWayPoints.size(); i++)
     {
-      if (wayPoint == recognizeWayPoints[i])
+      if (wayPoint == detectWayPoints[i])
       {
-        deleteIndex = i;
-        isRecognize = true;
+        detectPointFlag = true;
+        break;
       }
     }
-    if (deleteIndex != -1)
-    {
-      recognizeWayPoints.erase(recognizeWayPoints.begin() + deleteIndex);
+    if (detectPointFlag) isDetect_ = true;
+    else {
+      if(isDetect_){
+        imageCount = 0;
+        trafficLightCount = 0;
+        redCount = 0;
+        blueCount = 0;
+        lightState = 0;
+        existTrafficLight = false;
+        isDetect_ = false;
+      }
+      isDetect_ = false;
     }
   }
 
