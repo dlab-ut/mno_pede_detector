@@ -1,0 +1,13 @@
+mno_pede_detector:
+  ros__parameters:
+    subscribers:
+      darknet_ros_mno:
+        topic: /darknet_ros_mno
+      way_point:
+        topic: /current_waypoint_index
+    publishers:
+      is_runnable:
+        topic: /is_runnable
+    detect_way_points:
+      - 10
+      - 30

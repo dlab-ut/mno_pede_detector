@@ -12,7 +12,9 @@
 int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);
-  rclcpp::spin(std::make_shared<mno_pede_detector::DetectionSubscriber>());
+  auto mnoPedeDetector = std::make_shared<mno_pede_detector::DetectionSubscriber>();
+  mnoPedeDetector->init();
+  rclcpp::spin(mnoPedeDetector->get_node_base_interface());
   rclcpp::shutdown();
   return 0;
 }

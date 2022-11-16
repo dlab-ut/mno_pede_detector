@@ -1,0 +1,6 @@
+<launch>
+    <node pkg="mno_pede_detector" exec="detection_subscriber">
+        <param from="$(find-pkg-share mno_pede_detector)/config/ros.yaml"/>
+    </node>
+    <include file="$(find-pkg-share darknet_ros)/launch/yolov3.launch.py"/>
+</launch>
